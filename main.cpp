@@ -6,7 +6,7 @@
 using namespace std;
 
 
-typedef unsigned char   BYTE;
+
 typedef unsigned short  WORD;
 typedef unsigned long   DWORD;
 typedef long            LONG;
@@ -35,6 +35,7 @@ typedef struct BMPheader{
 } __attribute__((packed,aligned(2))) bmpheader;
 struct BMP {
     BMPheader h;
+    unsigned char* buffer;
     unsigned char* data;
 };
 bool read_bmp(char* filename,BMP &bmp){
@@ -45,12 +46,15 @@ bool read_bmp(char* filename,BMP &bmp){
     //將資料從檔案輸入到記憶體
     unsigned char* ptr;
     ptr = (unsigned char *)&(bmp.h);
-//	file.open("input2.bmp", ios::in | ios::binary);
     fread(ptr, sizeof(unsigned char),sizeof(bmpheader),pFile);
-    //file.read(RGBQUAD[0], sizeof(RGBQUAD));
+    if(bmp.h.bitmap_headersize>40){
+        bmp.buffer = new unsigned char[bmp.h.bitmap_headersize-40];
+        fread(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,pFile);
+    }
     bmp.data = new unsigned char[(bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8)];
     fread(bmp.data, sizeof(unsigned char), (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8),pFile);
     fclose(pFile);
+    return true;
 }
 bool write_bmp(char* filename,BMP &bmp){
 //將資料從記憶體輸出到檔案
@@ -59,8 +63,12 @@ bool write_bmp(char* filename,BMP &bmp){
     ofp = fopen (filename, "wb");
     ptr = (unsigned char *)&(bmp.h);
     fwrite(ptr, sizeof(unsigned char),sizeof(bmpheader),ofp);
+    if(bmp.h.bitmap_headersize>40){
+        fwrite(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,ofp);
+    }
     fwrite((bmp.data), sizeof(unsigned char), ((bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8)),ofp);
     fclose(ofp);
+    return true;
 }
 void bmp_info(BMP &bmp){
     //顯示檔案資訊
