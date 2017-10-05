@@ -15,6 +15,10 @@ struct Pixel
 {
 	unsigned R, G, B;
 };
+struct Pixel32
+{
+    unsigned R, G, B,A;
+};
 typedef struct BMPheader{
     unsigned short identifier;      // 0x0000
     unsigned int filesize;          // 0x0002
@@ -37,24 +41,29 @@ struct BMP {
     BMPheader h;
     unsigned char* buffer;
     unsigned char* data;
-    int data_size;
+//    int data_size;
 };
 bool read_bmp(char* filename,BMP &bmp){
     fstream file;
     FILE * pFile;
     pFile = fopen (filename, "rb");
-
+    long size;
+    fseek (pFile, 0, SEEK_END);   // non-portable
+    size=ftell (pFile);
+    cout<<"file actual size "<<size<<endl;
+    fseek (pFile, 0, SEEK_SET);
     //將資料從檔案輸入到記憶體
     unsigned char* ptr;
     ptr = (unsigned char *)&(bmp.h);
     fread(ptr, sizeof(unsigned char),sizeof(bmpheader),pFile);
+
     if(bmp.h.bitmap_headersize>40){
         bmp.buffer = new unsigned char[bmp.h.bitmap_headersize-40];
         fread(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,pFile);
     }
-    bmp.data_size = (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8);
-    bmp.data = new unsigned char[bmp.data_size];
-    fread(bmp.data, sizeof(unsigned char), bmp.data_size,pFile);
+//    bmp.data_size = (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8);
+    bmp.data = new unsigned char[bmp.h.bitmap_datasize];
+    fread(bmp.data, sizeof(unsigned char), bmp.h.bitmap_datasize,pFile);
     fclose(pFile);
     return true;
 }
@@ -68,7 +77,7 @@ bool write_bmp(char* filename,BMP &bmp){
     if(bmp.h.bitmap_headersize>40){
         fwrite(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,ofp);
     }
-    fwrite((bmp.data), sizeof(unsigned char), bmp.data_size,ofp);
+    fwrite((bmp.data), sizeof(unsigned char), bmp.h.bitmap_datasize,ofp);
     fclose(ofp);
     return true;
 }
@@ -95,15 +104,67 @@ void bmp_info(BMP &bmp){
 void bmp_resolution(unsigned char q,BMP &bmp){
     unsigned char d = 256/q;
 
-    for (int i = 0; i <bmp.data_size; ++i) {
+    for (int i = 0; i <bmp.h.bitmap_datasize; ++i) {
         bmp.data[i] = (bmp.data[i]/d)*d;
     }
+}
+void bmp_resize(double rate,BMP &bmp){
+    unsigned char channel = bmp.h.bits_perpixel/8;
+    int new_width = bmp.h.width*1.5;
+    int new_height = bmp.h.height*1.5;
+    int left_up,left_down,right_up,right_down,map_x,map_y;
+    double d1,d3;
+    unsigned char* padding_img = new unsigned char[(bmp.h.width+40)*(bmp.h.height+40)*channel];
+//    unsigned char* resize_data = new unsigned char[new_height*new_width*channel];
+    for (int i = 0; i < bmp.h.height; ++i) {
+        for (int j = 0; j < bmp.h.width; ++j) {
+            for (int k = 0; k < channel; ++k) {
+                padding_img[i*(bmp.h.width+40)*channel+ j*channel+ k] = bmp.data[i*bmp.h.width*channel+j*channel+k];
+            }
+        }
+    }
+    bmp.h.width +=40;
+    bmp.h.height+=40;
+    bmp.h.bitmap_datasize = bmp.h.width*bmp.h.height*channel;
+    bmp.h.filesize = bmp.h.bitmap_dataoffset+bmp.h.bitmap_datasize;
+//    bmp.data_size = (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8);
+    unsigned char* a = bmp.data;
+    delete(a);
+    bmp.data = padding_img;
+//    for (int i = 0; i < new_height-1; ++i) {
+//        for (int j = 0; j < new_width+1; ++j) {
+//            for (int k = 0; k < channel; ++k) {
+//                map_x = i/1.5;
+//                map_y = j/1.5;
+//                d1 = j/1.5-map_y;
+//                d3 = i/1.5-map_x;
+//                left_up = padding_img[map_x*bmp.h.width*channel+map_y*channel+k];
+//                left_down = padding_img[(map_x+1)*bmp.h.width*channel+map_y*channel+k];
+//                right_up = padding_img[map_x*bmp.h.width*channel+(map_y+1)*channel+k];
+//                right_down = padding_img[(map_x+1)*bmp.h.width*channel+(map_y+1)*channel+k];
+//                double fx1 = (double)left_up + d1*(right_up-left_up);
+//                double fx2 = (double)left_down + d1*(right_down-left_down);
+//                resize_data[i*new_width*channel+j*channel+k] = fx1 + d3*(fx1-fx2);
+//
+//            }
+//        }
+//    }
+
 }
 int main(){
     BMP image;
     read_bmp("input1.bmp",image);
-    bmp_resolution(8,image);
+//    bmp_resolution(8,image);
+
+    bmp_resize(1.5,image);
     bmp_info(image);
     write_bmp("output.bmp",image);
+
+    FILE * pFile;
+    pFile = fopen ("output.bmp", "rb");
+    long size;
+    fseek (pFile, 0, SEEK_END);   // non-portable
+    size=ftell (pFile);
+    cout<<"file output size "<<size<<endl;
     return 0;
 }
