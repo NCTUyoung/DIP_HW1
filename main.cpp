@@ -37,6 +37,7 @@ struct BMP {
     BMPheader h;
     unsigned char* buffer;
     unsigned char* data;
+    int data_size;
 };
 bool read_bmp(char* filename,BMP &bmp){
     fstream file;
@@ -51,8 +52,9 @@ bool read_bmp(char* filename,BMP &bmp){
         bmp.buffer = new unsigned char[bmp.h.bitmap_headersize-40];
         fread(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,pFile);
     }
-    bmp.data = new unsigned char[(bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8)];
-    fread(bmp.data, sizeof(unsigned char), (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8),pFile);
+    bmp.data_size = (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8);
+    bmp.data = new unsigned char[bmp.data_size];
+    fread(bmp.data, sizeof(unsigned char), bmp.data_size,pFile);
     fclose(pFile);
     return true;
 }
@@ -66,7 +68,7 @@ bool write_bmp(char* filename,BMP &bmp){
     if(bmp.h.bitmap_headersize>40){
         fwrite(bmp.buffer, sizeof(unsigned char),bmp.h.bitmap_headersize-40,ofp);
     }
-    fwrite((bmp.data), sizeof(unsigned char), ((bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8)),ofp);
+    fwrite((bmp.data), sizeof(unsigned char), bmp.data_size,ofp);
     fclose(ofp);
     return true;
 }
@@ -90,10 +92,17 @@ void bmp_info(BMP &bmp){
          << "biClrUsed=\t" << bmp.h.usedcolors << '\n'
          << "biClrImportant=\t" << bmp.h.importantcolors << "\n\n";
 }
+void bmp_resolution(unsigned char q,BMP &bmp){
+    unsigned char d = 256/q;
 
+    for (int i = 0; i <bmp.data_size; ++i) {
+        bmp.data[i] = (bmp.data[i]/d)*d;
+    }
+}
 int main(){
     BMP image;
-    read_bmp("input2.bmp",image);
+    read_bmp("input1.bmp",image);
+    bmp_resolution(8,image);
     bmp_info(image);
     write_bmp("output.bmp",image);
     return 0;
