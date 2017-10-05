@@ -109,46 +109,59 @@ void bmp_resolution(unsigned char q,BMP &bmp){
     }
 }
 void bmp_resize(double rate,BMP &bmp){
-    unsigned char channel = bmp.h.bits_perpixel/8;
-    int new_width = bmp.h.width*1.5;
-    int new_height = bmp.h.height*1.5;
-    int left_up,left_down,right_up,right_down,map_x,map_y;
-    double d1,d3;
-    unsigned char* padding_img = new unsigned char[(bmp.h.width+40)*(bmp.h.height+40)*channel];
-//    unsigned char* resize_data = new unsigned char[new_height*new_width*channel];
+    unsigned char channel = (unsigned char)(bmp.h.bits_perpixel/8);
+    int new_width = (int)bmp.h.width*1.5;
+    int new_height = (int)bmp.h.height*1.5;
+    int map_x,map_y;
+    double d1,d3,left_up,left_down,right_up,right_down;
+    unsigned char* padding_img = new unsigned char[(bmp.h.width+1)*(bmp.h.height+1)*channel]();
+    unsigned char* resize_data = new unsigned char[new_height*new_width*channel];
     for (int i = 0; i < bmp.h.height; ++i) {
         for (int j = 0; j < bmp.h.width; ++j) {
             for (int k = 0; k < channel; ++k) {
-                padding_img[i*(bmp.h.width+40)*channel+ j*channel+ k] = bmp.data[i*bmp.h.width*channel+j*channel+k];
+                padding_img[i*(bmp.h.width+1)*channel+ j*channel+ k] = bmp.data[i*bmp.h.width*channel+j*channel+k];
             }
         }
     }
-    bmp.h.width +=40;
-    bmp.h.height+=40;
-    bmp.h.bitmap_datasize = bmp.h.width*bmp.h.height*channel;
-    bmp.h.filesize = bmp.h.bitmap_dataoffset+bmp.h.bitmap_datasize;
-//    bmp.data_size = (bmp.h).width*(bmp.h).height*((bmp.h).bits_perpixel/8);
+
+
+
+    for (int i = 0; i < new_height; ++i) {
+        for (int j = 0; j < new_width; ++j) {
+            for (int k = 0; k < channel; ++k) {
+                map_x = (int)(i/1.5);
+                map_y = (int)(j/1.5);
+                d1 = j/1.5-map_y;
+                d3 = i/1.5-map_x;
+                left_up = padding_img[map_x*(bmp.h.width+1)*channel+map_y*channel+k];
+                left_down = padding_img[(map_x+1)*(bmp.h.width+1)*channel+map_y*channel+k];
+                right_up = padding_img[map_x*(bmp.h.width+1)*channel+(map_y+1)*channel+k];
+                right_down = padding_img[(map_x+1)*(bmp.h.width+1)*channel+(map_y+1)*channel+k];
+                double fx1 = left_up + d1*(right_up-left_up);
+                double fx2 = left_down + d1*(right_down-left_down);
+//                if((fx1 + d3*(fx1-fx2))>255){
+//                    resize_data[i*new_width*channel+j*channel+k] = 255;
+//                    cout<<fx1<<" "<<fx2<<" "<<d3<<endl;
+//                }
+//                else if((fx1 + d3*(fx1-fx2))<0){
+//                    resize_data[i*new_width*channel+j*channel+k] = 0;
+//                }
+//                else{
+//
+//                }
+                resize_data[i*new_width*channel+j*channel+k] = (fx1 + d3*(fx2-fx1));
+
+
+            }
+        }
+    }
     unsigned char* a = bmp.data;
     delete(a);
-    bmp.data = padding_img;
-//    for (int i = 0; i < new_height-1; ++i) {
-//        for (int j = 0; j < new_width+1; ++j) {
-//            for (int k = 0; k < channel; ++k) {
-//                map_x = i/1.5;
-//                map_y = j/1.5;
-//                d1 = j/1.5-map_y;
-//                d3 = i/1.5-map_x;
-//                left_up = padding_img[map_x*bmp.h.width*channel+map_y*channel+k];
-//                left_down = padding_img[(map_x+1)*bmp.h.width*channel+map_y*channel+k];
-//                right_up = padding_img[map_x*bmp.h.width*channel+(map_y+1)*channel+k];
-//                right_down = padding_img[(map_x+1)*bmp.h.width*channel+(map_y+1)*channel+k];
-//                double fx1 = (double)left_up + d1*(right_up-left_up);
-//                double fx2 = (double)left_down + d1*(right_down-left_down);
-//                resize_data[i*new_width*channel+j*channel+k] = fx1 + d3*(fx1-fx2);
-//
-//            }
-//        }
-//    }
+    bmp.data = resize_data;
+    bmp.h.width =new_width;
+    bmp.h.height=new_height;
+    bmp.h.bitmap_datasize = bmp.h.width*bmp.h.height*channel;
+    bmp.h.filesize = bmp.h.bitmap_dataoffset+bmp.h.bitmap_datasize;
 
 }
 int main(){
